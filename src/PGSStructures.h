@@ -43,18 +43,18 @@ typedef struct __attribute__ ((packed)) {
 } PCSSegment_t;
 
 #define COMPOSITION_STATE_NORMAL            0x00
-#define COMPOSITION_STATE_ACQUISITION_POINT 0x00
-#define COMPOSITION_STATE_EPOCH_START       0x00
+#define COMPOSITION_STATE_ACQUISITION_POINT 0x40
+#define COMPOSITION_STATE_EPOCH_START       0x80
 
-#define PALETTE_UPDATE_FLAG_TRUE  0x00
-#define PALETTE_UPDATE_FLAG_FALSE 0x80
+#define PALETTE_UPDATE_FLAG_TRUE  0x80
+#define PALETTE_UPDATE_FLAG_FALSE 0x00
 
 typedef struct __attribute__ ((packed)) {
     be_uint16_t object_id;
     be_uint8_t  window_id;
     be_uint8_t  object_cropped_flag;
-    be_uint16_t object_horizontal_position;
-    be_uint16_t object_vertical_position;
+    be_uint16_t object_x;
+    be_uint16_t object_y;
 } CompositionObject_t;
 
 #define OBJECT_CROPPED_FLAG_FORCE 0x40
@@ -72,11 +72,11 @@ typedef struct __attribute__ ((packed)) {
  */
 
 typedef struct __attribute__ ((packed)) {
-    be_uint8_t  window_id;
-    be_uint16_t window_horizontal_position;
-    be_uint16_t window_vertical_position;
-    be_uint16_t window_width;
-    be_uint16_t window_height;
+    be_uint8_t  id;
+    be_uint16_t x;
+    be_uint16_t y;
+    be_uint16_t width;
+    be_uint16_t height;
 } WDSSegment_t;
 
 /**
@@ -101,12 +101,12 @@ typedef struct __attribute__ ((packed)) {
  */
 
 typedef struct __attribute__ ((packed)) {
-    be_uint16_t     object_id;
-    be_uint8_t      object_version;
-    be_uint8_t      sequence_flag;
-    be_uint24_t     data_length;
-    be_uint16_t     width;
-    be_uint16_t     height;
+    be_uint16_t id;
+    be_uint8_t  version;
+    be_uint8_t  sequence_flag;
+    be_uint24_t data_length;
+    be_uint16_t width;
+    be_uint16_t height;
 } ODSSegment_t;
 
 #define ODS_SEQUENCE_LAST  0x40
