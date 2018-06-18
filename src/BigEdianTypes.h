@@ -8,14 +8,16 @@
 #include <arpa/inet.h> // for ntohs() etc.
 #include <cstdint>
 
+#define swap24(x) (((x & 0x0000FF) << 16) | (x & 0x00FF00) | ((x & 0xFF0000) >> 16))
+
 class be_uint32_t {
 public:
     be_uint32_t() : be_val_(0) {}
     // Transparently cast from uint32_t
-    be_uint32_t(const uint32_t &val) : be_val_(htons(val)) {}
+    be_uint32_t(const uint32_t &val) : be_val_(htonl(val)) {}
     // Transparently cast to uint32_t
     operator uint32_t() const {
-        return ntohs(be_val_);
+        return ntohl(be_val_);
     }
 private:
     uint32_t be_val_;
@@ -25,10 +27,10 @@ class be_uint24_t {
 public:
     be_uint24_t() : be_val_(0) {}
     // Transparently cast from uint32_t
-    be_uint24_t(const uint32_t &val) : be_val_(htons(val)) {}
+    be_uint24_t(const uint32_t &val) : be_val_(swap24(val)) { }
     // Transparently cast to uint32_t
     operator uint32_t() const {
-        return ntohs(be_val_);
+        return swap24(be_val_);
     }
 private:
     unsigned int be_val_ : 24;

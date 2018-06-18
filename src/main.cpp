@@ -3,7 +3,7 @@
 #include <zconf.h>
 #include "PGSStructures.h"
 
-void generatePCS(int fd, int width, int height int composition_number) {
+void generatePCS(int fd, int width, int height, int composition_number) {
     PGSHeader_t         header;
     PCSSegment_t        segment;
     CompositionObject_t compositionObject;
