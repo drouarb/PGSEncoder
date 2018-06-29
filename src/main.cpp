@@ -20,8 +20,8 @@ void generatePCS(int fd, int pts, int width, int height, int composition_number)
     compositionObject.window_id = 0;
     compositionObject.object_cropped_flag = OBJECT_CROPPED_FLAG_OFF;
     //TODO fill
-    compositionObject.object_y = 0;
-    compositionObject.object_x = 0;
+    compositionObject.object_y = 100;
+    compositionObject.object_x = 100;
 
     header.pts = pts;
     header.segment_type = SEGMENT_TYPE_PCS;
@@ -36,10 +36,9 @@ void generateWDS(int fd, int pts) {
     PGSHeader_t  header;
     WDSSegment_t window;
 
-    window.id = 0;
     //TODO FILL
-    window.y = 0;
-    window.x = 0;
+    window.x = 100;
+    window.y = 100;
     window.width = 100;
     window.height = 100;
 
@@ -51,7 +50,7 @@ void generateWDS(int fd, int pts) {
     write_struct(fd, window);
 }
 
-void generatePDS(int fd, int pts) {
+void generatePDS(int fd, int pts, int y1, int y2) {
     PGSHeader_t  header;
     PDSSegment_t pds;
     PDSPalette_t palette1;
@@ -61,16 +60,16 @@ void generatePDS(int fd, int pts) {
     pds.palette_version = 0;
 
     palette1.palette_entry_id = 0;
-    palette1.y = 0x80;
+    palette1.y = y1;
     palette1.cb = 0x80;
     palette1.cr = 0x80;
     palette1.alpha = 0xFF;
 
     palette2.palette_entry_id = 1;
-    palette2.y = 0x80;
+    palette2.y = y2;
     palette2.cb = 0x80;
     palette2.cr = 0x80;
-    palette2.alpha = 0x80;
+    palette2.alpha = 0xFF;
 
     header.pts = pts;
     header.segment_type = SEGMENT_TYPE_PDS;
@@ -89,30 +88,31 @@ void generateODS(int fd, int pts, int color) {
     object.id = 0;
     object.version = 0;
     object.sequence_flag = ODS_SEQUENCE_BOTH;
-    object.width = 100;
-    object.height = 100;
+    object.width = 945;
+    object.height = 61;
+    object.data_length = (61 * 6) + 4; //Should add 4 for width & height shorts
 
     header.pts = pts;
     header.segment_type = SEGMENT_TYPE_ODS;
-    header.segment_size = sizeof(object) + (600);
+    header.segment_size = sizeof(object) + (61 * 6);
 
     write_struct(fd, header);
     write_struct(fd, object);
 
-    for (int i = 0; i < 100; i ++) {
+    for (int i = 0; i < 61; i ++) {
         be_uint8_t code;
 
         code = 0;
         write_struct(fd, code);
 
         //================
-        code = 0xC0;
+        code = 0xC0 | 0x03;
         write_struct(fd, code);
 
-        code = 0x64;
+        code = 0xB1;
         write_struct(fd, code);
 
-        code = color;
+        code = 2;
         write_struct(fd, code);
 
         //================
@@ -134,13 +134,13 @@ void generateEND(int fd, int pts) {
     write_struct(fd, header);
 }
 
-void cleanScreen(int fd, int pts) {
+void cleanScreen(int fd, int pts, int composition_number) {
     PGSHeader_t         header;
     PCSSegment_t        segment;
 
     segment.width = 1280;
     segment.height = 720;
-    segment.composition_number = 1;
+    segment.composition_number = composition_number;
 
     segment.composition_state = COMPOSITION_STATE_NORMAL;
     segment.palette_update_flag = PALETTE_UPDATE_FLAG_FALSE;
@@ -153,17 +153,35 @@ void cleanScreen(int fd, int pts) {
 
     write_struct(fd, header);
     write_struct(fd, segment);
+    generateWDS(fd, pts);
     generateEND(fd, pts);
 }
 
 int main() {
     int fd = open("out.sup", O_WRONLY | O_CREAT | O_APPEND, S_IRWXU);
-    generatePCS(fd, 100, 1280, 720, 1);
+    /*generatePCS(fd, 100, 1280, 720, 0);
     generateWDS(fd, 100);
-    generatePDS(fd, 100);
+    generatePDS(fd, 100, 0x80, 0xFF);
     generateODS(fd, 100, 0);
     generateEND(fd, 100);
+    cleanScreen(fd, 10000000, 1);*/
 
-    cleanScreen(fd, 10000000);
+    generateODS(fd, 0x43DFFA, 0);
+    generateEND(fd, 0x43DFFA);
+
+    /*generatePCS(fd, 20000500, 1280, 720, 2);
+    generateWDS(fd, 20000500);
+    generatePDS(fd, 20000500, 0xFE, 0x81);
+    generateODS(fd, 20000500, 1);
+    generateEND(fd, 20000500);
+    cleanScreen(fd, 30000000, 3);
+
+    generatePCS(fd, 40000500, 1280, 720, 4);
+    generateWDS(fd, 40000500);
+    generatePDS(fd, 40000500, 0x82, 0xFD);
+    generateODS(fd, 40000500, 0);
+    generateEND(fd, 40000500);
+    cleanScreen(fd, 50000000, 5);*/
+
     close(fd);
 }

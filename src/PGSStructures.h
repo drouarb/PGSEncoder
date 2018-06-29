@@ -72,7 +72,8 @@ typedef struct __attribute__ ((packed)) {
  */
 
 typedef struct __attribute__ ((packed)) {
-    be_uint8_t  id;
+    be_uint8_t  window_count = 1;
+    be_uint8_t  id = 0;
     be_uint16_t x;
     be_uint16_t y;
     be_uint16_t width;
