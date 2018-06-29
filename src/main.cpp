@@ -39,8 +39,8 @@ void generateWDS(int fd, int pts) {
     //TODO FILL
     window.x = 100;
     window.y = 100;
-    window.width = 100;
-    window.height = 100;
+    window.width = 945;
+    window.height = 61;
 
     header.pts = pts;
     header.segment_type = SEGMENT_TYPE_WDS;
@@ -63,13 +63,13 @@ void generatePDS(int fd, int pts, int y1, int y2) {
     palette1.y = y1;
     palette1.cb = 0x80;
     palette1.cr = 0x80;
-    palette1.alpha = 0xFF;
+    palette1.alpha = 0x80;
 
     palette2.palette_entry_id = 1;
     palette2.y = y2;
     palette2.cb = 0x80;
     palette2.cr = 0x80;
-    palette2.alpha = 0xFF;
+    palette2.alpha = 0x80;
 
     header.pts = pts;
     header.segment_type = SEGMENT_TYPE_PDS;
@@ -112,7 +112,7 @@ void generateODS(int fd, int pts, int color) {
         code = 0xB1;
         write_struct(fd, code);
 
-        code = 2;
+        code = 1;
         write_struct(fd, code);
 
         //================
@@ -157,31 +157,32 @@ void cleanScreen(int fd, int pts, int composition_number) {
     generateEND(fd, pts);
 }
 
-int main() {
-    int fd = open("out.sup", O_WRONLY | O_CREAT | O_APPEND, S_IRWXU);
-    /*generatePCS(fd, 100, 1280, 720, 0);
-    generateWDS(fd, 100);
-    generatePDS(fd, 100, 0x80, 0xFF);
-    generateODS(fd, 100, 0);
-    generateEND(fd, 100);
-    cleanScreen(fd, 10000000, 1);*/
+int main(int argc, char **argv) {
+    if (argc < 4) {
+        std::cout << "Usage: " << argv[0] << " output.sup width height" << std::endl;
+    }
 
+    int fd = open(argv[1], O_WRONLY | O_CREAT | O_APPEND, S_IRWXU);
+    int width = std::stoi(argv[2]);
+    int height = std::stoi(argv[3]);
+
+    if (fd < 0) {
+        std::cout << "Can't open " << argv[1] << std::endl;
+    }
+
+    int x;
+    int y;
+    int timecode;
+    std::string image;
+
+    while (std::cin >> timecode >> x >> y >> image) {
+        std::cout << timecode << " " << x << " " << y << " " << image << std::endl;
+    }
+
+    /*generatePCS(fd, 0x43DFFA, 1920, 1080, 0);
+    generateWDS(fd, 0x43DFFA);
+    generatePDS(fd, 0x43DFFA, 0x80, 0xFF);
     generateODS(fd, 0x43DFFA, 0);
-    generateEND(fd, 0x43DFFA);
-
-    /*generatePCS(fd, 20000500, 1280, 720, 2);
-    generateWDS(fd, 20000500);
-    generatePDS(fd, 20000500, 0xFE, 0x81);
-    generateODS(fd, 20000500, 1);
-    generateEND(fd, 20000500);
-    cleanScreen(fd, 30000000, 3);
-
-    generatePCS(fd, 40000500, 1280, 720, 4);
-    generateWDS(fd, 40000500);
-    generatePDS(fd, 40000500, 0x82, 0xFD);
-    generateODS(fd, 40000500, 0);
-    generateEND(fd, 40000500);
-    cleanScreen(fd, 50000000, 5);*/
-
+    generateEND(fd, 0x43DFFA);*/
     close(fd);
 }
