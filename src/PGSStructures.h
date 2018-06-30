@@ -5,6 +5,7 @@
 #ifndef PGSENCODER_PGSSTRUCTURES_H
 #define PGSENCODER_PGSSTRUCTURES_H
 
+#include <unistd.h>
 #include "BigEdianTypes.h"
 
 #define write_struct(fd, obj) write(fd, &obj, sizeof(obj))

@@ -2,8 +2,10 @@
 #include <fcntl.h>
 #include <zconf.h>
 #include "PGSStructures.h"
+#include "PNGImage.h"
+#include "Palette.h"
 
-void generatePCS(int fd, int pts, int width, int height, int composition_number) {
+void generatePCS(int fd, int pts, int width, int height, int x, int y, int composition_number) {
     PGSHeader_t         header;
     PCSSegment_t        segment;
     CompositionObject_t compositionObject;
@@ -32,96 +34,95 @@ void generatePCS(int fd, int pts, int width, int height, int composition_number)
     write_struct(fd, compositionObject);
 }
 
-void generateWDS(int fd, int pts) {
+void generateWDS(int fd, int pts, int x, int y, int width, int height) {
     PGSHeader_t  header;
     WDSSegment_t window;
-
-    //TODO FILL
-    window.x = 100;
-    window.y = 100;
-    window.width = 945;
-    window.height = 61;
 
     header.pts = pts;
     header.segment_type = SEGMENT_TYPE_WDS;
     header.segment_size = sizeof(window);
 
+    window.x = x;
+    window.y = y;
+    window.width = width;
+    window.height = height;
+
     write_struct(fd, header);
     write_struct(fd, window);
 }
 
-void generatePDS(int fd, int pts, int y1, int y2) {
-    PGSHeader_t  header;
-    PDSSegment_t pds;
-    PDSPalette_t palette1;
-    PDSPalette_t palette2;
+void RLEEncode(unsigned char color, int run, std::vector<unsigned char> &data_buffer, Palette &palette) {
+    if (run > 1) {
+        data_buffer.emplace_back(0);
+        //If it is not the default color we need to apply the mask 0b10000000
+        unsigned char colorFlag = (color > 0 ? 0x80 : 0x00);
 
-    pds.palette_id = 0;
-    pds.palette_version = 0;
+        //If it is longer than 64 (more that 5 bits) we need to apply the mask 0b01000000
+        if (run < 64) {
+            data_buffer.emplace_back((run & 0x3F) | 0x00 | colorFlag);
+        } else {
+            data_buffer.emplace_back(((run >> 8) & 0x3F) | 0x40 | colorFlag);
+            data_buffer.emplace_back(run & 0xFF);
+        }
 
-    palette1.palette_entry_id = 0;
-    palette1.y = y1;
-    palette1.cb = 0x80;
-    palette1.cr = 0x80;
-    palette1.alpha = 0x80;
-
-    palette2.palette_entry_id = 1;
-    palette2.y = y2;
-    palette2.cb = 0x80;
-    palette2.cr = 0x80;
-    palette2.alpha = 0x80;
-
-    header.pts = pts;
-    header.segment_type = SEGMENT_TYPE_PDS;
-    header.segment_size = sizeof(pds) + sizeof(palette1) * 2;
-
-    write_struct(fd, header);
-    write_struct(fd, pds);
-    write_struct(fd, palette1);
-    write_struct(fd, palette2);
+        //We apply the color
+        if (color > 0)
+            data_buffer.emplace_back(color);
+    } else {
+        //We have only one pixel
+        if (color == 0) {
+            //It's our default color, need to find a substitute
+            data_buffer.emplace_back(palette.getDefaultColorReplacement());
+        } else {
+            data_buffer.emplace_back(color);
+        }
+    }
 }
 
-void generateODS(int fd, int pts, int color) {
+void generateODS(int fd, unsigned int timestamp, PNGImage &image, Palette &palette) {
     PGSHeader_t  header;
     ODSSegment_t object;
+    std::vector<unsigned char> data_buffer;
+
+    header.pts = timestamp;
+    header.segment_type = SEGMENT_TYPE_ODS;
 
     object.id = 0;
     object.version = 0;
     object.sequence_flag = ODS_SEQUENCE_BOTH;
-    object.width = 945;
-    object.height = 61;
-    object.data_length = (61 * 6) + 4; //Should add 4 for width & height shorts
+    object.width = image.getWidth();
+    object.height = image.getHeight();
 
-    header.pts = pts;
-    header.segment_type = SEGMENT_TYPE_ODS;
-    header.segment_size = sizeof(object) + (61 * 6);
+    for (int y = 0; y < image.getHeight(); y++) {
+        int run = 0;
+        unsigned int lastpx = 0;
+        png_bytep row = image.getPixels()[y];
+
+        for (int x = 0; x < image.getWidth(); x++) {
+            png_bytep pngpx = &(row[x * 4]);
+            unsigned int px = getRGBA(pngpx[0], pngpx[1], pngpx[2], pngpx[3]);
+
+            if (x == 0 || px != lastpx) {
+                if (x != 0) {
+                    RLEEncode(palette.getColor(lastpx), run, data_buffer, palette);
+                }
+                run = 0;
+                lastpx = px;
+            }
+            run++;
+        }
+        //Flush last
+        RLEEncode(palette.getColor(lastpx), run, data_buffer, palette);
+        data_buffer.emplace_back(0);
+        data_buffer.emplace_back(0);
+    }
+
+    header.segment_size = sizeof(object) + data_buffer.size();
+    object.data_length = data_buffer.size() + 4; // WTF -4 VLC
 
     write_struct(fd, header);
     write_struct(fd, object);
-
-    for (int i = 0; i < 61; i ++) {
-        be_uint8_t code;
-
-        code = 0;
-        write_struct(fd, code);
-
-        //================
-        code = 0xC0 | 0x03;
-        write_struct(fd, code);
-
-        code = 0xB1;
-        write_struct(fd, code);
-
-        code = 1;
-        write_struct(fd, code);
-
-        //================
-        code = 0;
-        write_struct(fd, code);
-
-        code = 0;
-        write_struct(fd, code);
-    }
+    write(fd, data_buffer.data(), data_buffer.size());
 }
 
 void generateEND(int fd, int pts) {
@@ -153,30 +154,47 @@ void cleanScreen(int fd, int pts, int composition_number) {
 
     write_struct(fd, header);
     write_struct(fd, segment);
-    generateWDS(fd, pts);
+    //generateWDS(fd, pts);
     generateEND(fd, pts);
 }
 
 int main(int argc, char **argv) {
     if (argc < 4) {
         std::cout << "Usage: " << argv[0] << " output.sup width height" << std::endl;
+        std::cout << "\tInsert one frame per line on the following format:" << std::endl;
+        std::cout << "\t<timestamp> <x position> <y position> <path to image>" << std::endl;
+        return 0;
     }
 
-    int fd = open(argv[1], O_WRONLY | O_CREAT | O_APPEND, S_IRWXU);
+    int fd = open(argv[1], O_WRONLY | O_CREAT, S_IRWXU);
     int width = std::stoi(argv[2]);
     int height = std::stoi(argv[3]);
 
     if (fd < 0) {
         std::cout << "Can't open " << argv[1] << std::endl;
+        return 0;
     }
 
     int x;
     int y;
-    int timecode;
-    std::string image;
+    unsigned int timestamp;
+    std::string image_path;
+    int composition_number = 0;
 
-    while (std::cin >> timecode >> x >> y >> image) {
-        std::cout << timecode << " " << x << " " << y << " " << image << std::endl;
+    while (std::cin >> timestamp >> x >> y >> image_path) {
+        std::cout << timestamp << " " << x << " " << y << " " << image_path << std::endl;
+        timestamp = 0x0043DFFA;
+
+        PNGImage image(image_path);
+        Palette palette(image);
+
+        generatePCS(fd, timestamp, width, height, x, y, composition_number);
+        generateWDS(fd, timestamp, x, y, image.getWidth(), image.getHeight());
+        palette.generatePalette(fd, timestamp);
+        generateODS(fd, timestamp, image, palette);
+        generateEND(fd, timestamp);
+
+        composition_number++;
     }
 
     /*generatePCS(fd, 0x43DFFA, 1920, 1080, 0);

@@ -3,11 +3,9 @@ project(PGSEncoder)
 
 set(CMAKE_CXX_STANDARD 11)
 
-find_package(Freetype REQUIRED)
-include_directories(${FREETYPE_INCLUDE_DIRS})
+find_package(PNG REQUIRED)
+include_directories("/usr/local/include/libpng16")
 
-SET(CMAKE_CXX_FLAGS "-O2 -std=c++11")
+add_executable(PGSEncoder src/main.cpp src/PGSStructures.h src/BigEdianTypes.h src/PNGImage.cpp src/PNGImage.h src/ColorTools.h src/Palette.cpp src/Palette.h)
 
-add_executable(PGSEncoder src/main.cpp src/PGSStructures.h src/BigEdianTypes.h)
-
-target_link_libraries(PGSEncoder ${FREETYPE_LIBRARIES})
+target_link_libraries(PGSEncoder "/usr/local/lib/libpng.dylib")
