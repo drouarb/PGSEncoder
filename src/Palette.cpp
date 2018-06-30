@@ -66,7 +66,7 @@ Palette::Palette(PNGImage &image) {
     //Get a replacement color if we need 1 pixel of prefered color
     int pos = -1;
     long distance = 0;
-    for (int i = 0; i < colorSorter.size(); i++) {
+    for (int i = 1; i < colorSorter.size(); i++) {
         long newdist = RGBADistance(colorSorter[i].first, colorSorter.front().first);
 
         if (pos == -1 || newdist < distance) {
