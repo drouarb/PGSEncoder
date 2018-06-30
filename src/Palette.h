@@ -8,6 +8,7 @@
 #include <map>
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include "PNGImage.h"
 #include "ColorTools.h"
 
