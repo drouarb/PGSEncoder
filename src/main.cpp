@@ -5,7 +5,7 @@
 #include "PNGImage.h"
 #include "Palette.h"
 
-void generatePCS(int fd, int pts, int width, int height, int x, int y, int composition_number) {
+void generatePCS(int fd, unsigned int pts, int width, int height, int x, int y, int composition_number) {
     PGSHeader_t         header;
     PCSSegment_t        segment;
     CompositionObject_t compositionObject;
@@ -22,8 +22,8 @@ void generatePCS(int fd, int pts, int width, int height, int x, int y, int compo
     compositionObject.window_id = 0;
     compositionObject.object_cropped_flag = OBJECT_CROPPED_FLAG_OFF;
     //TODO fill
-    compositionObject.object_y = 100;
-    compositionObject.object_x = 100;
+    compositionObject.object_y = y;
+    compositionObject.object_x = x;
 
     header.pts = pts;
     header.segment_type = SEGMENT_TYPE_PCS;
@@ -34,7 +34,7 @@ void generatePCS(int fd, int pts, int width, int height, int x, int y, int compo
     write_struct(fd, compositionObject);
 }
 
-void generateWDS(int fd, int pts, int x, int y, int width, int height) {
+void generateWDS(int fd, unsigned int pts, int x, int y, int width, int height) {
     PGSHeader_t  header;
     WDSSegment_t window;
 
@@ -125,7 +125,7 @@ void generateODS(int fd, unsigned int timestamp, PNGImage &image, Palette &palet
     write(fd, data_buffer.data(), data_buffer.size());
 }
 
-void generateEND(int fd, int pts) {
+void generateEND(int fd, unsigned int pts) {
     PGSHeader_t header;
 
     header.pts = pts;
@@ -135,12 +135,12 @@ void generateEND(int fd, int pts) {
     write_struct(fd, header);
 }
 
-void cleanScreen(int fd, int pts, int composition_number) {
+void cleanScreen(int fd, int pts, int width, int height, int composition_number) {
     PGSHeader_t         header;
     PCSSegment_t        segment;
 
-    segment.width = 1280;
-    segment.height = 720;
+    segment.width = width;
+    segment.height = height;
     segment.composition_number = composition_number;
 
     segment.composition_state = COMPOSITION_STATE_NORMAL;
@@ -154,15 +154,13 @@ void cleanScreen(int fd, int pts, int composition_number) {
 
     write_struct(fd, header);
     write_struct(fd, segment);
-    //generateWDS(fd, pts);
-    generateEND(fd, pts);
 }
 
 int main(int argc, char **argv) {
     if (argc < 4) {
         std::cout << "Usage: " << argv[0] << " output.sup width height" << std::endl;
         std::cout << "\tInsert one frame per line on the following format:" << std::endl;
-        std::cout << "\t<timestamp> <x position> <y position> <path to image>" << std::endl;
+        std::cout << "\t<timestamp> <x position> <y position> <path to image|clean>" << std::endl;
         return 0;
     }
 
@@ -177,24 +175,33 @@ int main(int argc, char **argv) {
 
     int x;
     int y;
+    int window_width;
+    int window_height;
     unsigned int timestamp;
     std::string image_path;
     int composition_number = 0;
 
     while (std::cin >> timestamp >> x >> y >> image_path) {
         std::cout << timestamp << " " << x << " " << y << " " << image_path << std::endl;
-        timestamp = 0x0043DFFA;
 
-        PNGImage image(image_path);
-        Palette palette(image);
+        if (image_path != "clean") {
+            PNGImage image(image_path);
+            Palette palette(image);
 
-        generatePCS(fd, timestamp, width, height, x, y, composition_number);
-        generateWDS(fd, timestamp, x, y, image.getWidth(), image.getHeight());
-        palette.generatePalette(fd, timestamp);
-        generateODS(fd, timestamp, image, palette);
-        generateEND(fd, timestamp);
+            generatePCS(fd, timestamp, width, height, x, y, composition_number);
+            generateWDS(fd, timestamp, x, y, image.getWidth(), image.getHeight());
+            palette.generatePalette(fd, timestamp);
+            generateODS(fd, timestamp, image, palette);
+            generateEND(fd, timestamp);
 
-        composition_number++;
+            window_width = image.getWidth();
+            window_height = image.getHeight();
+        } else {
+            cleanScreen(fd, timestamp, width, height, composition_number);
+            generateWDS(fd, timestamp, x, y, window_width, window_height);
+            generateEND(fd, timestamp);
+            composition_number++;
+        }
     }
 
     /*generatePCS(fd, 0x43DFFA, 1920, 1080, 0);

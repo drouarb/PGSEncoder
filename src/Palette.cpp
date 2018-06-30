@@ -100,9 +100,6 @@ void Palette::generatePalette(int fd, unsigned int pts) {
         palette.alpha = getA(colorSorter[i].first);
 
         write_struct(fd, palette);
-
-        std::cout << "Id: " << i << " Y: " << (int)palette.y << " Cb: " << (int)palette.cb << " Cr: " << (int)palette.cr << " A: " << (int)palette.alpha << std::endl;
-        std::cout << " -> " << i << " R: " << getR(colorSorter[i].first) << " G:  " << getG(colorSorter[i].first) << " B:  " << getB(colorSorter[i].first) << " A: " << getA(colorSorter[i].first) << std::endl;
     }
 }
 
