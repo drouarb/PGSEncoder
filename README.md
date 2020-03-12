@@ -14,5 +14,7 @@ Usage: ./PGSEncoder output.sup width height
 
 This software is available on BSD 3-Clause License
 
-[https://github.com/drouarb/PGSEncoder/blob/master/LICENSE]
+https://github.com/drouarb/PGSEncoder/blob/master/LICENSE
 
+## Resources
+http://blog.thescorpius.com/index.php/2017/07/15/presentation-graphic-stream-sup-files-bluray-subtitle-format/
